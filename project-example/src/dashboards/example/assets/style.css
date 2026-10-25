@@ -1,0 +1,4 @@
+body { font: 16px system-ui, sans-serif; margin: 2rem auto; max-width: 900px; padding: 0 1rem; }
+button, select { margin: .25rem; padding: .5rem; }
+pre { background: #f4f4f4; overflow: auto; padding: 1rem; }
+#status { min-height: 1.5rem; }

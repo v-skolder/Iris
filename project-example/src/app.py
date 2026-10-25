@@ -1,4 +1,6 @@
 
+from pathlib import Path
+
 from iris import DashboardDataSource, DirectoryPublisher, Iris, SetupField
 
 from src.cubes import ExampleCube
@@ -8,7 +10,7 @@ from src.setup_steps import ExampleSetupStep
 __all__ = ["app"]
 
 
-app = Iris()
+app = Iris(version="1.0.0")
 app.config.html_base_directory = "./src/dashboards"
 
 app.add_setup_step(
@@ -24,6 +26,16 @@ app.add_setup_step(
     ],
 )
 
+app.add_publish_environment(
+    name="hmg",
+    publisher=DirectoryPublisher(path=lambda config: Path(config["drive_path"]) / "hmg"),
+)
+
+app.add_publish_environment(
+    name="prod",
+    publisher=DirectoryPublisher(path=lambda config: Path(config["drive_path"]) / "prod"),
+)
+
 app.add_dashboard(
     id="example_dashboard",
     data=[
@@ -32,8 +44,7 @@ app.add_dashboard(
             payload_formatter=ExamplePayloadFormatter(),
         )
     ],
-    html="example.html",
-    publisher=DirectoryPublisher(),
+    html="example/index.html",
 )
 
 
