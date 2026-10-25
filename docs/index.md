@@ -6,5 +6,6 @@
 - [Desktop app](core-concepts/desktop-app.md)
 - [Setup step](core-concepts/setup-step.md)
 - [HTML Runtime](core-concepts/html-runtime.md)
+- [Standalone Builder](core-concepts/standalone-builder.md)
 - [Cache](core-concepts/cache.md)
 - [Published artifacts](core-concepts/publish-artifact.md)

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Example dashboard</title>
+    <link rel="stylesheet" href="assets/style.css" />
+    <script src="https://cdn.jsdelivr.net/gh/v-skolder/Iris@v0.1.0/runtime/iris-runtime.js"></script>
+  </head>
+  <body>
+    <h1>Example dashboard</h1>
+    <p>Select a monthly partition to read or remove from the cache.</p>
+    <select id="partition" aria-label="Partition"></select>
+    <button id="load">Load partition</button>
+    <button id="refresh">Refresh partition</button>
+    <button id="delete">Delete cached data</button>
+    <button id="publish">Publish dashboard</button>
+    <p id="status" role="status"></p>
+    <pre id="output">Waiting for data.</pre>
+    <script src="assets/dashboard.js"></script>
+  </body>
+</html>
