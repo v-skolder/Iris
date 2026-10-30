@@ -10,30 +10,19 @@ All methods return promises. Invalid arguments, unknown or unavailable identifie
 
 ## Dashboard and data source
 
+See the [Dashboard](Dashboard.md) and [DataSource](DataSource.md) class references for their full contracts.
+
 Each dashboard has an application-wide unique `id`. A dashboard registers one or more data sources, each with an `id` unique **within that dashboard**, a Cube and a PayloadFormatter. The pair `(dashboardId, dataSourceId)` identifies the complete association; neither the Cube nor the formatter is addressed separately through this API. The same Cube can therefore be used by different dashboards with different formatters, without ambiguity.
 
 The Cube owns source discovery and data retrieval. Its associated PayloadFormatter transforms the data into the payload consumed by that dashboard. Both desktop reads and publication use this same association. Published files contain the formatted payload, not the raw Cube or the formatter implementation.
 
-A partition is an object mapping each column named in the Cube's `PARTITION_BY` to its value, for example `{ month: "202609", product: "cartao" }`. A selection is an array of these objects, for example `[{ month: "202609" }, { month: "202610" }]`. Each object must contain exactly the Cube's partition columns; missing or unknown columns reject the operation. Values are strings and must not be converted to numbers. Object key order does not identify a partition: Iris uses the Cube's declared partition-column order when encoding artifact file names. An explicit empty selection selects nothing; omitted or `null` selections use the operation's default.
+A [Partition](Partition.md) object belongs to a data source and exposes its column values through `values` and its status through `isCached`. Obtain partitions with `source.listPartitions()` and pass those objects to `getData` and `cleanCache`. A selection is an array of Partition objects; an explicit empty selection selects nothing, while omitted or `null` selections use the operation's default.
 
 ## Registry and navigation
 
 ### `IrisRuntimeSDK.listDashboards()`
 
-Returns dashboard descriptors. Desktop mode lists registered dashboards; published mode lists dashboards present in the published hub registry.
-
-```js
-await IrisRuntimeSDK.listDashboards();
-// [{
-//   id: "example_dashboard",
-//   name: "Exemple Dashboard",
-//   tags: ["Example"],
-//   description: "A simple dashboard just for example",
-//   navigate_relative_url: "./example/index.html"
-// }]
-```
-
-`navigate_relative_url` is resolved relative to the hub URL and can differ by runtime. It is a navigation address, not an access-control guarantee.
+Returns Dashboard objects for the registered dashboards in desktop mode and the dashboards present in the published hub registry in published mode. Each object exposes the properties and operations described in [Dashboard](Dashboard.md).
 
 ### `IrisRuntimeSDK.getDashboard(id)`
 
@@ -47,22 +36,22 @@ Returns a data source object for an association registered on this dashboard. It
 const dashboard = await IrisRuntimeSDK.getDashboard("example_dashboard");
 const source = await dashboard.getDataSource("example_source");
 const partitions = await source.listPartitions();
-const data = await source.getData({ partitions: [{ month: "202609" }] });
+const data = await source.getData({ partitions: [partitions[0]] });
 ```
 ### `dashboard.listDataSources()`
 
-Returns descriptors for the data sources registered on this dashboard:
+Returns DataSource objects registered on this dashboard:
 
 ```js
 await dashboard.listDataSources();
-// [{ id: "example_source", cube_id: "example_cube" }]
+// [DataSource { id: "example_source", cubeId: "example_cube" }]
 ```
 
-`id` identifies the Cube–PayloadFormatter association within the dashboard. `cube_id` identifies its Cube for inspection; the formatter is inseparable from the association and is applied automatically. The SDK does not expose implementation objects or credentials. A dashboard with no sources returns `[]`. In published mode, the result contains the sources recorded for that published dashboard, including sources with no published partitions.
+`id` identifies the Cube–PayloadFormatter association within the dashboard. `cubeId` identifies its Cube for inspection; the formatter is inseparable from the association and is applied automatically. The SDK does not expose implementation objects or credentials. A dashboard with no sources returns `[]`. In published mode, the result contains the sources recorded for that published dashboard, including sources with no published partitions.
 
 ### `IrisRuntimeSDK.listPublishEnvironments()`
 
-Returns the registered publication environments in the desktop app:
+Returns simple objects describing the environments registered in the desktop app:
 
 ```js
 await IrisRuntimeSDK.listPublishEnvironments();
@@ -84,7 +73,7 @@ Publishes the specified dashboard and its data-source associations to one destin
 
 Publication uses cached partitions from each associated Cube, formats them with **that dashboard's associated formatter**, and writes the resulting payloads under the dashboard and data source. It does not discover or fetch uncached partitions. Publication is incremental: previously published partitions remain available. The dashboard HTML is created if absent; if it already exists, publishing data leaves it unchanged. The published hub is managed separately. Updates follow the ordering and failure limitations in [Published artifacts](../../core-concepts/publish-artifact.md); the whole destination is not a single transaction.
 
-The result is `{ dashboard_id, environment, published_sources }`. `environment` is the selected ID or `null` for Downloads. `published_sources` is an array of `{ data_source_id, partitions }`, containing the partitions published for each source in this operation. Sources without cached partitions have an empty array.
+On success, the promise resolves without a value. A failed publication rejects.
 
 This operation is desktop-only. Refreshing or populating the cache is a separate operation.
 
@@ -97,12 +86,12 @@ Returns the available partitions for the specified dashboard data source and the
 ```js
 await source.listPartitions();
 // [
-//   { partition: { month: "202609" }, isCached: true },
-//   { partition: { month: "202610" }, isCached: false }
+//   Partition { values: { month: "202609" }, isCached: true },
+//   Partition { values: { month: "202610" }, isCached: false }
 // ]
 ```
 
-`partition` maps the Cube's partition-column names to their values. `isCached` is a boolean, not a string. In desktop mode, the associated Cube discovers source partitions and `isCached` indicates whether each partition is present in SQLite. An empty source returns `[]`; a discovery failure rejects the promise.
+`values` maps the Cube's partition-column names to their values. `isCached` is a boolean, not a string. In desktop mode, the associated Cube discovers source partitions and `isCached` indicates whether each partition is present in SQLite. An empty source returns `[]`; a discovery failure rejects the promise.
 
 In published mode, the manifest lists the available published partitions. Each is returned with `isCached: true`, meaning its published payload is available; it does not indicate the presence of a desktop cache.
 ## Data and cache
@@ -124,19 +113,18 @@ In published mode, omitted or `null` partitions select all published partitions 
 The result preserves partition boundaries:
 
 ```js
-await source.getData({
-  partitions: [{ month: "202609" }]
-});
-// { partitions: [{ values: { month: "202609" }, payload: /* formatted data */ }] }
+const partitions = await source.listPartitions();
+await source.getData({ partitions: [partitions[0]] });
+// [{ partition: partitions[0], payload: /* formatted data */ }]
 ```
 
-The formatter defines each payload's internal structure. No selected partitions produces `{ partitions: [] }`. A failed read or formatting operation rejects rather than returning a partial result.
+The formatter defines each payload's internal structure. No selected partitions produces an empty array. A failed read or formatting operation rejects rather than returning a partial result.
 
 ### `source.cleanCache(partitions = null)`
 
-Deletes cached data for the source's Cube. `partitions` is an optional list of partition objects; omitted or `null` deletes all cached partitions for that Cube, while `[]` deletes nothing. Already absent partitions are ignored. Since the cache belongs to the Cube, other dashboard associations using that Cube are also affected. Source data and published artifacts are unchanged.
+Deletes cached data for the source's Cube. `partitions` is an optional list of Partition objects returned by this source; omitted or `null` deletes all cached partitions for that Cube, while `[]` deletes nothing. Already absent partitions are ignored. Since the cache belongs to the Cube, other dashboard associations using that Cube are also affected. Source data and published artifacts are unchanged.
 
-The result is `{ dashboard_id, data_source_id, deleted_partitions }`, with the partition objects actually removed. This operation is desktop-only.
+On success, the promise resolves without a value. A failed cleanup rejects. This operation is desktop-only.
 
 ## Published artifact contract
 
@@ -158,7 +146,5 @@ These registries and manifests are part of the SDK's public contract and must be
 | `listPublishEnvironments`, `publish`, `cleanCache` | Available | Rejects as unavailable |
 
 Published reads require access to the artifact files and the SDK CDN. See [Cache](../../core-concepts/cache.md) and [Published artifacts](../../core-concepts/publish-artifact.md).
-
-
 
 
