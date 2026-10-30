@@ -28,18 +28,24 @@ app.add_setup_step(
 
 app.add_publish_environment(
     name="hmg",
+    description="Use it for in validation artifacts.",
     publisher=DirectoryPublisher(path=lambda config: Path(config["drive_path"]) / "hmg"),
 )
 
 app.add_publish_environment(
     name="prod",
+    description="Use it for validated artifacts.",
     publisher=DirectoryPublisher(path=lambda config: Path(config["drive_path"]) / "prod"),
 )
 
 app.add_dashboard(
     id="example_dashboard",
+    name="Exemple Dashboard",
+    description="A simple dashboard just for example",
+    tags=["Example"],
     data=[
         DashboardDataSource(
+            id="example_source",
             cube=ExampleCube(),
             payload_formatter=ExamplePayloadFormatter(),
         )
