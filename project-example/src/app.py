@@ -15,7 +15,7 @@ app.config.html_base_directory = "./src/dashboards"
 
 app.add_setup_step(
     message="Configuring Databricks and Google Drive...",
-    implementation=ExampleSetupStep(profile="picpay-principal"),
+    implementation=ExampleSetupStep(profile="bank-principal"),
     fields= \
     [
         SetupField(
